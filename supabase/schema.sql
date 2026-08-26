@@ -116,3 +116,102 @@ alter table payments enable row level security;
 create policy "Users can read own payments"
   on payments for select
   using (auth.uid() = user_id);
+
+-- ============================================
+-- pg_cron + pg_net: Worker xử lý queue
+-- Chạy trong Supabase SQL Editor (kích hoạt Extension trước)
+-- ============================================
+
+-- Kích hoạt extensions (Supabase Dashboard → Database → Extensions)
+-- create extension if not exists pg_cron;
+-- create extension if not exists pg_net;
+
+-- Function xử lý queue
+create or replace function public.process_notify_queue()
+returns void as $$
+declare
+  item record;
+  config record;
+  payload jsonb;
+  forward_ok boolean;
+  forward_code int;
+  forward_bytes int;
+  forward_err text;
+  max_retries int := 3;
+begin
+  for item in
+    select * from notify_queue
+    where status = 'pending' and retry_count < max_retries
+    order by received_at asc
+    limit 50
+    for update skip locked
+  loop
+    -- Đánh dấu đang xử lý
+    update notify_queue set status = 'processing' where id = item.id;
+    payload := item.raw_payload;
+
+    -- Lưu vào notifications
+    insert into notifications (user_id, application, event_time, money, detail)
+    values (
+      item.user_id,
+      payload->>'application',
+      (payload->>'time')::timestamptz,
+      (payload->>'money')::numeric,
+      payload->>'detail'
+    );
+
+    -- Kiểm tra webhook config
+    forward_ok := false;
+    forward_code := null;
+    forward_bytes := null;
+    forward_err := null;
+
+    select * into config
+    from webhook_configs
+    where user_id = item.user_id and is_enabled = true and target_url is not null;
+
+    if found then
+      begin
+        select
+          status_code,
+          length(content)::int,
+          null
+        into forward_code, forward_bytes, forward_err
+        from net.http_post(
+          url := config.target_url,
+          body := payload::text,
+          content_type := 'application/json',
+          timeout_milliseconds := 10000
+        );
+        forward_ok := (forward_code between 200 and 299);
+      exception when others then
+        forward_err := SQLERRM;
+        forward_code := 0;
+      end;
+    end if;
+
+    -- Cập nhật notifications
+    update notifications set
+      forwarded := forward_ok,
+      forward_status_code := forward_code,
+      forward_bytes := forward_bytes,
+      forward_error := forward_err
+    where user_id = item.user_id
+      and detail = payload->>'detail'
+      and id = (select id from notifications where user_id = item.user_id order by id desc limit 1);
+
+    -- Đánh dấu done hoặc failed
+    if forward_ok or config is null then
+      update notify_queue set status = 'done', processed_at = now() where id = item.id;
+    else
+      update notify_queue set
+        status = case when item.retry_count + 1 >= max_retries then 'failed' else 'pending' end,
+        retry_count = item.retry_count + 1
+      where id = item.id;
+    end if;
+  end loop;
+end;
+$$ language plpgsql;
+
+-- pg_cron: chạy mỗi 10 giây
+-- select cron.schedule('process-queue', '*/10 * * * * *', $$select public.process_notify_queue()$$);
