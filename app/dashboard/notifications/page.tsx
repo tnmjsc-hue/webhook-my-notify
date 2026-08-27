@@ -25,7 +25,7 @@ export default function NotificationsPage() {
     loadNotifs()
 
     const channel = supabase
-      .channel('notifications-realtime')
+      .channel(`notifications-realtime-${crypto.randomUUID()}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
         setNotifs((prev) => [payload.new as Notification, ...prev].slice(0, 100))
       })

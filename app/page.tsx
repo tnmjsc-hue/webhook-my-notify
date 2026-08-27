@@ -90,7 +90,7 @@ export default function Home() {
             <div className="bg-zinc-50 dark:bg-zinc-900/50 rounded-xl p-4">
               <p className="text-sm font-medium text-zinc-900 dark:text-white mb-2">1. Gửi POST request từ app điện thoại:</p>
               <pre className="bg-white dark:bg-zinc-950 rounded-lg p-4 font-mono text-xs overflow-x-auto border border-zinc-200 dark:border-zinc-800">
-{`POST https://webhook-my-notify.vercel.app/api/wmn_endpoint
+{`POST https://wmn.tnmp.cloud/api/wmn_endpoint
 Headers:
   X-API-Key: wmn_live_xxxxxxxxxxxx
   Content-Type: application/json

@@ -219,7 +219,7 @@ export default function ApiKeysPage() {
       <div className="bg-zinc-100 dark:bg-zinc-800/50 rounded-xl p-4 text-sm text-zinc-600 dark:text-zinc-400 space-y-2">
         <p className="font-medium text-zinc-900 dark:text-white">Cách sử dụng:</p>
         <pre className="bg-white dark:bg-zinc-900 rounded-lg p-3 font-mono text-xs overflow-x-auto">
-{`POST https://webhook-my-notify.vercel.app/api/wmn_endpoint
+{`POST https://wmn.tnmp.cloud/api/wmn_endpoint
 Header: X-API-Key: <your-api-key>
 Body: {
   "application": "MBBank",

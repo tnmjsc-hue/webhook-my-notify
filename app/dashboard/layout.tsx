@@ -90,43 +90,40 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       {/* Desktop sidebar */}
-      <div className="hidden md:flex md:min-h-screen">
-        <aside className="w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col fixed inset-y-0">
-          <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
-            <div className="flex items-center justify-between">
-              <h1 className="text-lg font-bold text-zinc-900 dark:text-white">WMN</h1>
-              <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
-                {plan}
-              </span>
-            </div>
-            <p className="text-xs text-zinc-500 truncate mt-1">{email ?? '...'}</p>
+      <aside className="hidden md:flex w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex-col fixed inset-y-0">
+        <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
+          <div className="flex items-center justify-between">
+            <h1 className="text-lg font-bold text-zinc-900 dark:text-white">WMN</h1>
+            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+              {plan}
+            </span>
           </div>
-          <nav className="flex-1 p-2 space-y-1 overflow-y-auto">{nav}</nav>
-          <div className="p-2 border-t border-zinc-200 dark:border-zinc-800 space-y-1">
-            <Link
-              href="/dashboard/upgrade"
-              onClick={() => setMenuOpen(false)}
-              className="block px-3 py-2 text-sm rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-medium hover:opacity-90 transition-opacity"
-            >
-              Nâng cấp gói
-            </Link>
-            <button
-              onClick={async () => {
-                await supabase.auth.signOut()
-                router.replace('/login')
-              }}
-              className="w-full text-left px-3 py-2 text-sm rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
-            >
-              Đăng xuất
-            </button>
-          </div>
-        </aside>
-        <main className="flex-1 ml-64 p-6 overflow-auto">{children}</main>
-      </div>
+          <p className="text-xs text-zinc-500 truncate mt-1">{email ?? '...'}</p>
+        </div>
+        <nav className="flex-1 p-2 space-y-1 overflow-y-auto">{nav}</nav>
+        <div className="p-2 border-t border-zinc-200 dark:border-zinc-800 space-y-1">
+          <Link
+            href="/dashboard/upgrade"
+            onClick={() => setMenuOpen(false)}
+            className="block px-3 py-2 text-sm rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-medium hover:opacity-90 transition-opacity"
+          >
+            Nâng cấp gói
+          </Link>
+          <button
+            onClick={async () => {
+              await supabase.auth.signOut()
+              router.replace('/login')
+            }}
+            className="w-full text-left px-3 py-2 text-sm rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+          >
+            Đăng xuất
+          </button>
+        </div>
+      </aside>
 
-      {/* Mobile */}
-      <div className="md:hidden">
-        <header className="sticky top-0 z-50 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
+      <div className="md:pl-64 flex flex-col min-h-screen">
+        {/* Mobile header */}
+        <header className="md:hidden sticky top-0 z-50 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
           <div className="flex items-center justify-between px-4 py-3">
             <button
               onClick={() => setMenuOpen(!menuOpen)}
@@ -164,7 +161,7 @@ export default function DashboardLayout({
             </nav>
           )}
         </header>
-        <main className="p-4">{children}</main>
+        <main className="flex-1 p-4 md:p-6 overflow-auto">{children}</main>
       </div>
     </div>
   )
