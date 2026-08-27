@@ -1,4 +1,5 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { checkNotificationQuota, checkForwardQuota } from '@/lib/usage'
 import type { NotifyPayload } from '@/lib/types'
 
 /**
@@ -20,6 +21,12 @@ export async function validateAndInsert(apiKeyHash: string, payload: NotifyPaylo
   }
 
   const userId = apiKey.user_id
+
+  // Kiểm tra quota gói trước khi insert
+  const quotaError = await checkNotificationQuota(userId)
+  if (quotaError) {
+    return { error: quotaError.message, quota: true }
+  }
 
   const { data: inserted, error: notifError } = await supabase
     .from('notifications')
@@ -64,6 +71,19 @@ export async function forwardWebhook(
 
   if (!config?.is_enabled || !config.target_url) {
     return { userId, forwarded: false, skipped: true }
+  }
+
+  // Kiểm tra giới hạn forward/ngày của gói
+  const forwardQuota = await checkForwardQuota(userId)
+  if (forwardQuota) {
+    await supabase
+      .from('notifications')
+      .update({
+        forwarded: false,
+        forward_error: forwardQuota.message,
+      })
+      .eq('id', notificationId)
+    return { userId, forwarded: false, skipped: true, quotaExceeded: true }
   }
 
   let forwarded = false

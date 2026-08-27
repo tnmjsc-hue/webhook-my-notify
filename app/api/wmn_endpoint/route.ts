@@ -26,6 +26,9 @@ export async function POST(request: Request) {
   const result = await validateAndInsert(apiKeyHash, payload)
 
   if ('error' in result) {
+    if ('quota' in result && result.quota) {
+      return NextResponse.json({ error: result.error, code: 'quota_exceeded' }, { status: 429 })
+    }
     const status = result.error === 'Invalid or inactive API key' ? 401 : 500
     return NextResponse.json({ error: result.error }, { status })
   }
