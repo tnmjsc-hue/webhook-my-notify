@@ -1,11 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "regions": ["hkg1"],
-  "crons": [
-    {
-      "path": "/api/cron/process-queue",
-      "schedule": "*/10 * * * *"
-    }
-  ]
+  "regions": ["hkg1"]
 }
