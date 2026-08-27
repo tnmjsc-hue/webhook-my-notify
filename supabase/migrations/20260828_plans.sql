@@ -22,7 +22,6 @@ create index if not exists idx_notifications_user_created
 -- 4) Mặc định user mới là free (trigger hiện có chỉ insert id, full_name
 --    nên plan sẽ tự nhận default 'free').
 
--- 5) (Tuỳ chọn) Cấp admin cho tài khoản chủ hệ thống
---    Thay UUID bằng id của bạn trong bảng profiles
--- update public.profiles set is_admin = true, plan = 'unlimited'
---   where id = '<YOUR_USER_ID>';
+-- 5) Cấp admin + gói unlimited cho tài khoản chủ hệ thống
+update public.profiles set is_admin = true, plan = 'unlimited'
+  where id = '264a84ab-d23d-482b-92b5-b092da5ac200';

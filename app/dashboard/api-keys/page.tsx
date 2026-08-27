@@ -39,11 +39,26 @@ export default function ApiKeysPage() {
   const [newKey, setNewKey] = useState<string | null>(null)
   const [revealedId, setRevealedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [plan, setPlan] = useState<string>('free')
+  const [usage, setUsage] = useState({ activeApiKeys: 0 })
   const supabase = createClient()
 
   useEffect(() => {
     loadKeys()
+    loadPlan()
   }, [])
+
+  async function loadPlan() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('plan')
+      .eq('id', user.id)
+      .single()
+    setPlan(profile?.plan ?? 'free')
+  }
 
   async function loadKeys() {
     const { data: { user } } = await supabase.auth.getUser()
@@ -53,32 +68,26 @@ export default function ApiKeysPage() {
       .select('id, key_prefix, is_active, created_at')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
+    const active = (data ?? []).filter((k) => k.is_active).length
     setKeys(data ?? [])
+    setUsage({ activeApiKeys: active })
     setLoading(false)
   }
 
   async function createKey() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const rawKey = `wmn_live_${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`
-    const { createHash } = await import('crypto')
-    const keyHash = createHash('sha256').update(rawKey).digest('hex')
-    const keyPrefix = rawKey.slice(0, 12) + '...'
-
-    const { data: inserted, error } = await supabase
-      .from('api_keys')
-      .insert({ user_id: user.id, key_hash: keyHash, key_prefix: keyPrefix })
-      .select('id')
-      .single()
-
-    if (!error && inserted) {
-      setNewKey(rawKey)
-      const sessionKeys = readSessionKeys()
-      sessionKeys.push({ id: inserted.id, raw: rawKey })
-      writeSessionKeys(sessionKeys)
-      loadKeys()
+    setError(null)
+    const resp = await fetch('/api/keys', { method: 'POST' })
+    const body = await resp.json()
+    if (!resp.ok) {
+      setError(body.error ?? 'Không thể tạo key')
+      return
     }
+    setNewKey(body.raw_key)
+    const sessionKeys = readSessionKeys()
+    sessionKeys.push({ id: body.id, raw: body.raw_key })
+    writeSessionKeys(sessionKeys)
+    setUsage((u) => ({ ...u, activeApiKeys: u.activeApiKeys + 1 }))
+    loadKeys()
   }
 
   function getSessionKey(id: string): string | null {
@@ -89,6 +98,7 @@ export default function ApiKeysPage() {
   async function revokeKey(id: string) {
     if (!confirm('Thu hồi API key này?')) return
     await supabase.from('api_keys').update({ is_active: false }).eq('id', id)
+    setUsage((u) => ({ ...u, activeApiKeys: Math.max(0, u.activeApiKeys - 1) }))
     loadKeys()
   }
 
@@ -98,11 +108,23 @@ export default function ApiKeysPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">API Keys</h1>
-        <button onClick={createKey}
-          className="px-4 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
-          Tạo key mới
-        </button>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-zinc-500">
+            Gói: <span className="font-semibold uppercase text-zinc-700 dark:text-zinc-300">{plan}</span>
+            {' · '}{usage.activeApiKeys} key đang dùng
+          </span>
+          <button onClick={createKey}
+            className="px-4 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
+            Tạo key mới
+          </button>
+        </div>
       </div>
+
+      {error && (
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl p-4 text-sm text-red-700 dark:text-red-300">
+          {error}
+        </div>
+      )}
 
       {newKey && (
         <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
