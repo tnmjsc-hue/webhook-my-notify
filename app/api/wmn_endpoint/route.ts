@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
-import { processPayloadNow } from '@/lib/queue'
+import { NextResponse, after } from 'next/server'
+import { validateAndInsert, forwardWebhook } from '@/lib/queue'
 import type { NotifyPayload } from '@/lib/types'
 
 export async function POST(request: Request) {
@@ -22,12 +22,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing required fields: application, time, money' }, { status: 400 })
   }
 
-  const result = await processPayloadNow(apiKeyHash, payload)
+  // Validate key + insert notification ngay (nhanh, ~80ms). Không forward.
+  const result = await validateAndInsert(apiKeyHash, payload)
 
   if ('error' in result) {
     const status = result.error === 'Invalid or inactive API key' ? 401 : 500
     return NextResponse.json({ error: result.error }, { status })
   }
+
+  // Forward webhook sau khi response đã gửi - KHÔNG block endpoint,
+  // điện thoại không phải chờ webhook. Vercel dùng waitUntil giữ invocation.
+  after(async () => {
+    await forwardWebhook(result.userId, result.notificationId, payload)
+  })
 
   return NextResponse.json({ status: 'accepted' }, { status: 202 })
 }

@@ -2,13 +2,11 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { NotifyPayload } from '@/lib/types'
 
 /**
- * Xử lý realtime ngay trong request:
- * - validate API key
- * - insert thẳng vào `notifications`
- * - forward webhook config ngay lập tức
- * Trả về error nếu key invalid/inactive.
+ * Validate API key + insert notification vào bảng notifications.
+ * Nhanh (~80ms), KHÔNG forward - để endpoint trả response ngay.
+ * Trả về error nếu key invalid/inactive hoặc insert lỗi.
  */
-export async function processPayloadNow(apiKeyHash: string, payload: NotifyPayload) {
+export async function validateAndInsert(apiKeyHash: string, payload: NotifyPayload) {
   const supabase = createServiceRoleClient()
 
   const { data: apiKey, error: keyError } = await supabase
@@ -39,9 +37,16 @@ export async function processPayloadNow(apiKeyHash: string, payload: NotifyPaylo
     return { error: 'Failed to insert notification' as const }
   }
 
-  const notificationId = inserted.id
+  return { userId, notificationId: inserted.id }
+}
 
-  // Forward webhook realtime
+/**
+ * Forward webhook sau khi response đã gửi (gọi trong after()).
+ * Không block endpoint - điện thoại không phải chờ forward.
+ */
+export async function forwardWebhook(userId: string, notificationId: number, payload: NotifyPayload) {
+  const supabase = createServiceRoleClient()
+
   const { data: config } = await supabase
     .from('webhook_configs')
     .select('target_url, is_enabled')
