@@ -1,6 +1,89 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { NotifyPayload } from '@/lib/types'
 
+/**
+ * Xử lý realtime ngay trong request:
+ * - validate API key
+ * - insert thẳng vào `notifications`
+ * - forward webhook config ngay lập tức
+ * Trả về error nếu key invalid/inactive.
+ */
+export async function processPayloadNow(apiKeyHash: string, payload: NotifyPayload) {
+  const supabase = createServiceRoleClient()
+
+  const { data: apiKey, error: keyError } = await supabase
+    .from('api_keys')
+    .select('id, user_id, is_active')
+    .eq('key_hash', apiKeyHash)
+    .single()
+
+  if (keyError || !apiKey || !apiKey.is_active) {
+    return { error: 'Invalid or inactive API key' as const }
+  }
+
+  const userId = apiKey.user_id
+
+  const { data: inserted, error: notifError } = await supabase
+    .from('notifications')
+    .insert({
+      user_id: userId,
+      application: payload.application,
+      event_time: payload.time,
+      money: payload.money,
+      detail: payload.detail,
+    })
+    .select('id')
+    .single()
+
+  if (notifError || !inserted) {
+    return { error: 'Failed to insert notification' as const }
+  }
+
+  const notificationId = inserted.id
+
+  // Forward webhook realtime
+  const { data: config } = await supabase
+    .from('webhook_configs')
+    .select('target_url, is_enabled')
+    .eq('user_id', userId)
+    .single()
+
+  let forwarded = false
+  let forwardStatusCode: number | null = null
+  let forwardBytes: number | null = null
+  let forwardError: string | null = null
+
+  if (config?.is_enabled && config.target_url) {
+    try {
+      const resp = await fetch(config.target_url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
+      })
+      forwarded = resp.ok
+      forwardStatusCode = resp.status
+      const body = await resp.text()
+      forwardBytes = new TextEncoder().encode(body).length
+    } catch (err) {
+      forwardError = err instanceof Error ? err.message : 'Forward failed'
+      forwardStatusCode = 0
+    }
+
+    await supabase
+      .from('notifications')
+      .update({
+        forwarded,
+        forward_status_code: forwardStatusCode,
+        forward_bytes: forwardBytes,
+        forward_error: forwardError,
+      })
+      .eq('id', notificationId)
+  }
+
+  return { userId, forwarded }
+}
+
 export async function createQueueItem(apiKeyHash: string, payload: NotifyPayload) {
   const supabase = createServiceRoleClient()
 

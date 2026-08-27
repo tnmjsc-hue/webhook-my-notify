@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createQueueItem } from '@/lib/queue'
+import { processPayloadNow } from '@/lib/queue'
 import type { NotifyPayload } from '@/lib/types'
 
 export async function POST(request: Request) {
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing required fields: application, time, money' }, { status: 400 })
   }
 
-  const result = await createQueueItem(apiKeyHash, payload)
+  const result = await processPayloadNow(apiKeyHash, payload)
 
   if ('error' in result) {
     const status = result.error === 'Invalid or inactive API key' ? 401 : 500
