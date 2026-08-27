@@ -16,9 +16,22 @@ export default function SignupPage() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const { error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({ email, password })
+    if (error) { setLoading(false); setError(error.message); return }
+
+    // Đã có session (email confirmation tắt) → vào dashboard luôn
+    if (data.session) {
+      router.push('/dashboard')
+      return
+    }
+
+    // Chưa có session → thực hiện đăng nhập tự động
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
-    if (error) { setError(error.message); return }
+    if (signInError) {
+      setError('Đăng ký thành công. Vui lòng kiểm tra email để xác nhận tài khoản trước khi đăng nhập.')
+      return
+    }
     router.push('/dashboard')
   }
 
