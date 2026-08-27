@@ -66,8 +66,8 @@ export async function forwardWebhook(
   const { data: config } = await supabase
     .from('webhook_configs')
     .select('target_url, is_enabled')
-    .eq('user_id', userId)
-    .single()
+    .eq('api_key_id', apiKeyId)
+    .maybeSingle()
 
   if (!config?.is_enabled || !config.target_url) {
     return { userId, forwarded: false, skipped: true }
@@ -221,8 +221,8 @@ export async function processPendingItems() {
     const { data: config } = await supabase
       .from('webhook_configs')
       .select('target_url, is_enabled')
-      .eq('user_id', userId)
-      .single()
+      .eq('api_key_id', item.api_key_id)
+      .maybeSingle()
 
     let forwarded = false
     let forwardStatusCode: number | null = null
