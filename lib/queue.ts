@@ -1,8 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { NotifyPayload } from '@/lib/types'
 
 export async function createQueueItem(apiKeyHash: string, payload: NotifyPayload) {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
 
   const { data: apiKey, error: keyError } = await supabase
     .from('api_keys')
