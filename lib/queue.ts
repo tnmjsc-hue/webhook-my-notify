@@ -1,4 +1,5 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { createClient } from '@/lib/supabase/server'
 import type { NotifyPayload } from '@/lib/types'
 
 export async function createQueueItem(apiKeyHash: string, payload: NotifyPayload) {
