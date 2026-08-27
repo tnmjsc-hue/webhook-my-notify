@@ -5,5 +5,11 @@ import { NextResponse } from 'next/server'
 export async function POST() {
   const supabase = await createClient()
   await supabase.auth.signOut()
-  return NextResponse.redirect(`${getSiteUrl()}/login`)
+  return NextResponse.redirect(`${getSiteUrl()}/login`, 303)
+}
+
+export async function GET() {
+  const supabase = await createClient()
+  await supabase.auth.signOut()
+  return NextResponse.redirect(`${getSiteUrl()}/login`, 303)
 }

@@ -10,9 +10,34 @@ interface ApiKey {
   created_at: string
 }
 
+interface SessionKey {
+  id: string
+  raw: string
+}
+
+const SESSION_KEYS_KEY = 'wmn_session_keys'
+
+function readSessionKeys(): SessionKey[] {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEYS_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function writeSessionKeys(keys: SessionKey[]) {
+  try {
+    sessionStorage.setItem(SESSION_KEYS_KEY, JSON.stringify(keys))
+  } catch {
+    // sessionStorage không sẵn - bỏ qua, key chỉ hiện 1 lần
+  }
+}
+
 export default function ApiKeysPage() {
   const [keys, setKeys] = useState<ApiKey[]>([])
   const [newKey, setNewKey] = useState<string | null>(null)
+  const [revealedId, setRevealedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
@@ -41,16 +66,24 @@ export default function ApiKeysPage() {
     const keyHash = createHash('sha256').update(rawKey).digest('hex')
     const keyPrefix = rawKey.slice(0, 12) + '...'
 
-    const { error } = await supabase.from('api_keys').insert({
-      user_id: user.id,
-      key_hash: keyHash,
-      key_prefix: keyPrefix,
-    })
+    const { data: inserted, error } = await supabase
+      .from('api_keys')
+      .insert({ user_id: user.id, key_hash: keyHash, key_prefix: keyPrefix })
+      .select('id')
+      .single()
 
-    if (!error) {
+    if (!error && inserted) {
       setNewKey(rawKey)
+      const sessionKeys = readSessionKeys()
+      sessionKeys.push({ id: inserted.id, raw: rawKey })
+      writeSessionKeys(sessionKeys)
       loadKeys()
     }
+  }
+
+  function getSessionKey(id: string): string | null {
+    const found = readSessionKeys().find((k) => k.id === id)
+    return found?.raw ?? null
   }
 
   async function revokeKey(id: string) {
@@ -97,32 +130,68 @@ export default function ApiKeysPage() {
             </tr>
           </thead>
           <tbody>
-            {keys.map((k) => (
-              <tr key={k.id} className="border-b border-zinc-100 dark:border-zinc-800/50">
-                <td className="p-3 font-mono text-xs text-zinc-700 dark:text-zinc-300">{k.key_prefix}</td>
-                <td className="p-3">
-                  {k.is_active ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Hoạt động</span>
-                  ) : (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Đã thu hồi</span>
-                  )}
-                </td>
-                <td className="p-3 text-zinc-500 text-xs">{new Date(k.created_at).toLocaleString('vi-VN')}</td>
-                <td className="p-3">
-                  {k.is_active && (
-                    <button onClick={() => revokeKey(k.id)}
-                      className="text-xs text-red-600 hover:underline">
-                      Thu hồi
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {keys.map((k) => {
+              const sessionRaw = getSessionKey(k.id)
+              return (
+                <tr key={k.id} className="border-b border-zinc-100 dark:border-zinc-800/50">
+                  <td className="p-3 font-mono text-xs text-zinc-700 dark:text-zinc-300">
+                    {revealedId === k.id && sessionRaw ? (
+                      <div className="flex items-center gap-2">
+                        <code className="break-all">{sessionRaw}</code>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(sessionRaw) }}
+                          className="text-xs text-blue-600 hover:underline shrink-0"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    ) : (
+                      k.key_prefix
+                    )}
+                  </td>
+                  <td className="p-3">
+                    {k.is_active ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Hoạt động</span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Đã thu hồi</span>
+                    )}
+                  </td>
+                  <td className="p-3 text-zinc-500 text-xs">{new Date(k.created_at).toLocaleString('vi-VN')}</td>
+                  <td className="p-3">
+                    <div className="flex items-center gap-3">
+                      {sessionRaw && (
+                        <button
+                          onClick={() => setRevealedId(revealedId === k.id ? null : k.id)}
+                          className="text-xs text-blue-600 hover:underline"
+                        >
+                          {revealedId === k.id ? 'Ẩn' : 'Xem lại'}
+                        </button>
+                      )}
+                      {k.is_active && (
+                        <button onClick={() => revokeKey(k.id)}
+                          className="text-xs text-red-600 hover:underline">
+                          Thu hồi
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
             {keys.length === 0 && (
               <tr><td colSpan={4} className="p-6 text-center text-zinc-400">Chưa có API key nào</td></tr>
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="bg-zinc-100 dark:bg-zinc-800/50 rounded-xl p-4 text-sm text-zinc-600 dark:text-zinc-400 space-y-2">
+        <p className="font-medium text-zinc-900 dark:text-white">Lưu ý về key:</p>
+        <ul className="list-disc list-inside space-y-1">
+          <li>Key chỉ hiển thị đầy đủ <strong>một lần</strong> sau khi tạo (bảo mật — không lưu bản rõ ở server).</li>
+          <li>Trong phiên duyệt web hiện tại (tab chưa đóng), bạn có thể bấm <strong>"Xem lại"</strong> để lấy key vừa tạo.</li>
+          <li>Nếu mất key, hãy thu hồi và tạo key mới — không thể khôi phục key cũ.</li>
+        </ul>
       </div>
 
       <div className="bg-zinc-100 dark:bg-zinc-800/50 rounded-xl p-4 text-sm text-zinc-600 dark:text-zinc-400 space-y-2">
