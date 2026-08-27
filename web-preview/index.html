@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WMN Notify - Preview</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --primary: #1B5E20;
+  --primary-light: #4CAF50;
+  --primary-container: #A5D6A7;
+  --on-primary: #fff;
+  --surface: #FCFDF6;
+  --on-surface: #1A1C19;
+  --surface-variant: #E0E5DA;
+  --on-surface-variant: #43493E;
+  --error: #BA1A1A;
+  --error-container: #FFDAD6;
+  --secondary-container: #C8E6C9;
+  --tertiary-container: #D0E8D0;
+  --radius: 12px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+body {
+  font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: #f0f0f0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+.phone-frame {
+  width: 390px;
+  max-width: 100%;
+  height: 844px;
+  max-height: 95vh;
+  background: var(--surface);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.status-bar {
+  background: var(--primary);
+  color: var(--on-primary);
+  padding: 8px 20px;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+}
+.app-bar {
+  background: var(--primary);
+  color: var(--on-primary);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 18px;
+  font-weight: 700;
+}
+.app-bar .actions { display: flex; gap: 8px; }
+.app-bar button {
+  background: none;
+  border: none;
+  color: var(--on-primary);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+.app-bar button:hover { background: rgba(255,255,255,0.15); }
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.card {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+.card.primary-container { background: var(--primary-container); }
+.card.secondary-container { background: var(--secondary-container); }
+.card.tertiary-container { background: var(--tertiary-container); }
+.card.error-container { background: var(--error-container); }
+.card.clickable { cursor: pointer; transition: transform 0.1s; }
+.card.clickable:hover { transform: scale(0.98); }
+.card.clickable:active { transform: scale(0.96); }
+.badge {
+  display: inline-block;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.notif-item {
+  background: var(--surface-variant);
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+.notif-item .title { font-weight: 600; margin-bottom: 2px; }
+.notif-item .text { color: var(--on-surface-variant); font-size: 11px; }
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 4px 0;
+}
+.section-header h3 { font-size: 18px; }
+.row { display: flex; align-items: center; gap: 12px; }
+.row-between { display: flex; justify-content: space-between; align-items: center; }
+.icon-circle {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+.btn {
+  background: var(--primary);
+  color: var(--on-primary);
+  border: none;
+  padding: 12px 24px;
+  border-radius: var(--radius);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: opacity 0.2s;
+}
+.btn:hover { opacity: 0.9; }
+.btn:active { opacity: 0.8; }
+.btn.error { background: var(--error); }
+.btn.outline {
+  background: transparent;
+  color: var(--primary);
+  border: 2px solid var(--primary);
+}
+.input-group { margin-bottom: 12px; }
+.input-group label {
+  display: block;
+  font-size: 12px;
+  color: var(--on-surface-variant);
+  margin-bottom: 4px;
+}
+.input-group input, .input-group textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1.5px solid #ccc;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input-group input:focus, .input-group textarea:focus {
+  border-color: var(--primary);
+}
+.input-group textarea { resize: vertical; min-height: 60px; }
+.switch {
+  position: relative;
+  width: 48px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch .slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: #ccc;
+  border-radius: 26px;
+  transition: 0.3s;
+}
+.switch .slider:before {
+  content: '';
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+.switch input:checked + .slider { background: var(--primary); }
+.switch input:checked + .slider:before { transform: translateX(22px); }
+.alert-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.alert-box {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 300px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+.alert-box h3 { margin-bottom: 12px; }
+.alert-box p { font-size: 14px; color: var(--on-surface-variant); margin-bottom: 16px; }
+.alert-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.alert-actions button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.alert-actions .cancel { background: #eee; }
+.alert-actions .confirm { background: var(--primary); color: white; }
+.hidden { display: none !important; }
+.arrow-back { font-size: 20px; cursor: pointer; margin-right: 8px; }
+.info-text { font-size: 11px; color: var(--on-surface-variant); line-height: 1.5; }
+.hint-text { font-size: 12px; color: var(--on-surface-variant); line-height: 1.5; margin-top: 8px; }
+.status-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+}
+.status-dot.green { background: var(--primary-light); }
+.status-dot.red { background: var(--error); }
+@media (max-width: 430px) {
+  .phone-frame { border-radius: 0; height: 100vh; max-height: 100vh; }
+  body { padding: 0; }
+}
+</style>
+</head>
+<body>
+<div class="phone-frame">
+  <div class="status-bar">
+    <span>WMN Notify Preview</span>
+    <span>2:08 AM</span>
+  </div>
+
+  <!-- LOGIN SCREEN -->
+  <div id="screen-login">
+    <div class="content" style="justify-content:center; padding:32px;">
+      <div class="card" style="text-align:center;">
+        <h1 style="color:var(--primary); margin-bottom:4px;">WMN Notify</h1>
+        <p class="info-text" style="margin-bottom:24px;">Đăng nhập để sử dụng</p>
+        <div class="input-group">
+          <label>Email</label>
+          <input type="email" id="login-email" placeholder="email@example.com">
+        </div>
+        <div class="input-group">
+          <label>Mật khẩu</label>
+          <input type="password" id="login-pass" placeholder="••••••">
+        </div>
+        <div id="login-error" class="hidden" style="background:var(--error-container); padding:10px; border-radius:8px; margin-bottom:12px; font-size:13px; color:var(--error);"></div>
+        <button class="btn" onclick="doLogin()">Đăng nhập</button>
+        <p class="info-text" style="margin-top:16px;">Sử dụng tài khoản đã đăng ký trên<br>webhook-my-notify.vercel.app</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOME SCREEN -->
+  <div id="screen-home" class="hidden">
+    <div class="app-bar">
+      <span>WMN Notify</span>
+      <div class="actions">
+        <button onclick="navigate('settings')" title="Cài đặt">⚙️</button>
+        <button onclick="navigate('login')" title="Đăng xuất">🚪</button>
+      </div>
+    </div>
+    <div class="content">
+      <!-- API Key -->
+      <div class="card primary-container">
+        <div style="font-weight:700; font-size:14px;">API Key</div>
+        <div style="font-size:13px; margin-top:4px;">Key prefix: wmn_live_a1b2c3d4...</div>
+        <p class="hint-text">Tạo API Key tại: webhook-my-notify.vercel.app/dashboard/api-keys</p>
+      </div>
+
+      <!-- Listener Status -->
+      <div class="card secondary-container">
+        <div class="row">
+          <span style="font-size:32px;">✅</span>
+          <div>
+            <div style="font-weight:700;">Đang đọc thông báo</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Info -->
+      <div class="card">
+        <div class="row">
+          <div class="icon-circle">U</div>
+          <div>
+            <div style="font-weight:700;">User Demo</div>
+            <div style="font-size:12px; color:var(--on-surface-variant);">demo@test.com</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Collected Apps Header -->
+      <div class="section-header">
+        <h3>Ứng dụng đã thu thập</h3>
+        <span class="badge" id="app-count">3 app</span>
+      </div>
+
+      <!-- App Cards -->
+      <div id="app-list"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS SCREEN -->
+  <div id="screen-settings" class="hidden">
+    <div class="app-bar">
+      <div class="row">
+        <span class="arrow-back" onclick="navigate('home')">←</span>
+        <span>Cài đặt</span>
+      </div>
+    </div>
+    <div class="content">
+      <!-- Service Status -->
+      <div class="card secondary-container">
+        <div class="row">
+          <span style="font-size:24px;">✅</span>
+          <div>
+            <div style="font-weight:700;">Dịch vụ đang chạy</div>
+            <div style="font-size:12px; color:var(--on-surface-variant);">Đang đọc thông báo từ các ứng dụng</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Instructions -->
+      <div class="card tertiary-container">
+        <div style="font-weight:700; font-size:14px; margin-bottom:8px;">Hướng dẫn</div>
+        <div style="font-size:12px; line-height:18px;">
+          1. Nhấn vào ứng dụng bên dưới để cấu hình<br>
+          2. Chọn nút cài đặt bên cạnh mỗi dòng thông báo<br>
+          3. Đặt tên biến theo nội dung thông báo<br>
+          4. Lưu lại - ứng dụng sẽ tự động gửi dữ liệu
+        </div>
+      </div>
+
+      <!-- Apps Section -->
+      <div class="section-header">
+        <h3>Ứng dụng (<span id="settings-app-count">3</span>)</h3>
+      </div>
+      <div id="settings-app-list"></div>
+    </div>
+  </div>
+
+  <!-- APP CONFIG SCREEN -->
+  <div id="screen-config" class="hidden">
+    <div class="app-bar">
+      <div class="row">
+        <span class="arrow-back" onclick="navigate('settings')">←</span>
+        <span id="config-app-name">MBBank</span>
+      </div>
+      <div class="actions">
+        <button onclick="saveConfig()" title="Lưu">✅</button>
+      </div>
+    </div>
+    <div class="content">
+      <!-- Info -->
+      <div class="card tertiary-container" style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:20px;">ℹ️</span>
+        <div style="font-size:12px; line-height:18px;">
+          Cấu hình dữ liệu gửi về server cho từng thông báo. Nhấn nút cài đặt bên cạnh mỗi dòng để thiết lập biến.
+        </div>
+      </div>
+
+      <!-- Notification Configs -->
+      <div id="config-list"></div>
+
+      <!-- Save Button -->
+      <button class="btn" onclick="saveConfig()" style="margin-top:8px;">✅ Lưu cài đặt</button>
+      <div style="height:16px;"></div>
+    </div>
+  </div>
+
+  <!-- ALERT -->
+  <div id="alert-overlay" class="alert-overlay hidden" onclick="closeAlert()">
+    <div class="alert-box" onclick="event.stopPropagation()">
+      <h3 id="alert-title">Lưu cài đặt</h3>
+      <p id="alert-text">Lưu cài đặt cho 3 thông báo sẽ gửi về server?</p>
+      <div class="alert-actions">
+        <button class="cancel" onclick="closeAlert()">Hủy</button>
+        <button class="confirm" onclick="confirmSave()">Lưu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const mockApps = [
+  {
+    name: "MBBank",
+    package: "com.mbbank",
+    notifications: [
+      { title: "MBBank", text: "TK 0123456789 -500,000 VND luc 10:15:27 ngay 27/08/2026. So du: 1,234,567 VND. Noi dung: Chuyen tien cho Nguyen Van A", time: "10:15" },
+      { title: "MBBank", text: "TK 0123456789 +2,000,000 VND luc 09:30:15 ngay 27/08/2026. So du: 1,734,567 VND. Noi dung: Nhan tien tu Tran Thi B", time: "09:30" },
+      { title: "MBBank", text: "TK 0123456789 -150,000 VND luc 08:45:00 ngay 27/08/2026. So du: 1,584,567 VND. Noi dung: Thanh toan hoa don dien", time: "08:45" },
+      { title: "MBBank", text: "TK 0123456789 +5,000,000 VND luc 14:20:00 ngay 26/08/2026. So du: 1,734,567 VND. Noi dung: Luong thang 08", time: "14:20" }
+    ]
+  },
+  {
+    name: "Vietcombank",
+    package: "com.vietcombank",
+    notifications: [
+      { title: "Vietcombank", text: "So du tai khoan 1234xxx da thay doi +3,500,000 VND. Thoi gian: 11:20:33 27/08/2026. Noi dung: Chuyen khoan tu Le Van C", time: "11:20" },
+      { title: "Vietcombank", text: "So du tai khoan 1234xxx da thay doi -200,000 VND. Thoi gian: 10:05:12 27/08/2026. Noi dung: Rut tien ATM", time: "10:05" },
+      { title: "Vietcombank", text: "So du tai khoan 1234xxx da thay doi +1,000,000 VND. Thoi gian: 15:30:00 26/08/2026. Noi dung: Nhan tien tu Pham Thi D", time: "15:30" }
+    ]
+  },
+  {
+    name: "Techcombank",
+    package: "com.techcombank",
+    notifications: [
+      { title: "Techcombank", text: "Giao dich thanh cong -850,000 VND luc 16:45:22 ngay 27/08/2026. So du kha dung: 2,150,000 VND. Nhan gui: Hoang Van E", time: "16:45" },
+      { title: "Techcombank", text: "Giao dich thanh cong +4,200,000 VND luc 09:15:00 ngay 27/08/2026. So du kha dung: 3,000,000 VND. Noi dung: Tien ban hang", time: "09:15" },
+      { title: "Techcombank", text: "Giao dich thanh cong -50,000 VND luc 08:00:00 ngay 27/08/2026. So du kha dung: 2,150,000 VND. Phi giao dich", time: "08:00" }
+    ]
+  }
+];
+
+let currentScreen = 'login';
+let selectedAppIndex = 0;
+let configToggles = {};
+
+function navigate(screen) {
+  document.querySelectorAll('[id^="screen-"]').forEach(el => el.classList.add('hidden'));
+  document.getElementById('screen-' + screen).classList.remove('hidden');
+  currentScreen = screen;
+}
+
+function doLogin() {
+  const email = document.getElementById('login-email').value;
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+
+  if (!email || !pass) {
+    errEl.textContent = 'Vui lòng nhập email và mật khẩu';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  errEl.classList.add('hidden');
+  // Simulate login
+  document.querySelector('#screen-home .icon-circle').textContent = email[0].toUpperCase();
+  document.querySelector('#screen-home .icon-circle + div div:first-child').textContent = email.split('@')[0];
+  document.querySelector('#screen-home .icon-circle + div div:last-child').textContent = email;
+
+  renderAppList();
+  renderSettingsApps();
+  navigate('home');
+}
+
+function renderAppList() {
+  const list = document.getElementById('app-list');
+  document.getElementById('app-count').textContent = mockApps.length + ' app';
+  list.innerHTML = mockApps.map((app, i) => `
+    <div class="card clickable" onclick="openConfig(${i})">
+      <div class="row-between">
+        <span style="font-weight:700; font-size:15px;">${app.name}</span>
+        <span class="badge">${app.notifications.length} thông báo</span>
+      </div>
+      ${app.notifications.slice(0, 3).map(n => `
+        <div class="notif-item">
+          <div class="title">${n.title}</div>
+          <div class="text">${n.text.substring(0, 80)}...</div>
+        </div>
+      `).join('')}
+      ${app.notifications.length > 3 ? `<div class="info-text" style="margin-top:4px;">... và ${app.notifications.length - 3} thông báo khác</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function renderSettingsApps() {
+  const list = document.getElementById('settings-app-list');
+  document.getElementById('settings-app-count').textContent = mockApps.length;
+  list.innerHTML = mockApps.map((app, i) => `
+    <div class="card clickable" onclick="openConfig(${i})">
+      <div class="row-between">
+        <div>
+          <div style="font-weight:700; font-size:15px;">${app.name}</div>
+          <div style="font-size:11px; color:var(--on-surface-variant);">${app.package}</div>
+          <div style="font-size:12px; color:var(--primary);">${app.notifications.length} thông báo đã thu thập</div>
+        </div>
+        <span style="font-size:20px;">⚙️</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openConfig(index) {
+  selectedAppIndex = index;
+  const app = mockApps[index];
+  document.getElementById('config-app-name').textContent = app.name;
+
+  if (!configToggles[index]) {
+    configToggles[index] = {};
+  }
+
+  const list = document.getElementById('config-list');
+  list.innerHTML = app.notifications.map((n, ni) => {
+    const enabled = configToggles[index][ni] || false;
+    const money = extractMoney(n.text);
+    const time = extractTime(n.text);
+    const detail = n.text;
+    return `
+      <div class="card">
+        <div style="font-weight:600; font-size:13px;">${n.title}</div>
+        <div style="font-size:11px; color:var(--on-surface-variant); margin:4px 0;">${n.text.substring(0, 120)}...</div>
+        <div class="row-between" style="margin-top:8px;">
+          <span style="font-size:13px;">Gửi về server</span>
+          <label class="switch">
+            <input type="checkbox" ${enabled ? 'checked' : ''} onchange="toggleConfig(${ni}, this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div id="config-fields-${ni}" class="${enabled ? '' : 'hidden'}" style="margin-top:8px;">
+          <div class="input-group">
+            <label>application (tên app)</label>
+            <input type="text" value="${app.name}" id="cfg-app-${ni}">
+          </div>
+          <div class="input-group">
+            <label>money (số tiền)</label>
+            <input type="text" value="${money || ''}" id="cfg-money-${ni}">
+          </div>
+          <div class="input-group">
+            <label>time (thời gian)</label>
+            <input type="text" value="${time || n.time}" id="cfg-time-${ni}">
+          </div>
+          <div class="input-group">
+            <label>detail (nội dung)</label>
+            <textarea id="cfg-detail-${ni}">${detail}</textarea>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  navigate('config');
+}
+
+function toggleConfig(notifIndex, enabled) {
+  if (!configToggles[selectedAppIndex]) configToggles[selectedAppIndex] = {};
+  configToggles[selectedAppIndex][notifIndex] = enabled;
+  const fields = document.getElementById('config-fields-' + notifIndex);
+  fields.classList.toggle('hidden', !enabled);
+}
+
+function extractMoney(text) {
+  const patterns = [
+    /[+-]?\s*[\d.,]+\s*(?:VNĐ|VND|đ)/gi,
+    /[+-]?\s*\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?/,
+    /[+-]?\s*\d+(?:,\d{3})+(?:\.\d{1,2})?/,
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) return m[0].trim();
+  }
+  return null;
+}
+
+function extractTime(text) {
+  const patterns = [
+    /\d{1,2}:\d{2}(?::\d{2})?/,
+    /luc\s+(\d{1,2}:\d{2}:\d{2})/i,
+    /(\d{1,2}:\d{2})\s+ngay/i,
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) return m[0].trim();
+  }
+  return null;
+}
+
+function saveConfig() {
+  const app = mockApps[selectedAppIndex];
+  let enabledCount = 0;
+  if (configToggles[selectedAppIndex]) {
+    enabledCount = Object.values(configToggles[selectedAppIndex]).filter(v => v).length;
+  }
+  document.getElementById('alert-text').textContent = `Lưu cài đặt cho ${enabledCount} thông báo sẽ gửi về server?`;
+  document.getElementById('alert-overlay').classList.remove('hidden');
+}
+
+function confirmSave() {
+  closeAlert();
+  // Simulate save notification
+  const app = mockApps[selectedAppIndex];
+  const savedData = [];
+  if (configToggles[selectedAppIndex]) {
+    Object.entries(configToggles[selectedAppIndex]).forEach(([ni, enabled]) => {
+      if (enabled) {
+        savedData.push({
+          application: document.getElementById('cfg-app-' + ni)?.value || app.name,
+          money: document.getElementById('cfg-money-' + ni)?.value || '',
+          time: document.getElementById('cfg-time-' + ni)?.value || '',
+          detail: document.getElementById('cfg-detail-' + ni)?.value || ''
+        });
+      }
+    });
+  }
+
+  console.log('=== DATA TO SEND TO SERVER ===');
+  console.log(JSON.stringify(savedData, null, 2));
+  console.log('POST https://webhook-my-notify.vercel.app/api/wmn_endpoint');
+  console.log('Header: X-API-Key: wmn_live_xxxxxxxx');
+
+  // Show toast
+  showToast('Đã lưu cài đặt cho ' + app.name);
+  navigate('settings');
+}
+
+function closeAlert() {
+  document.getElementById('alert-overlay').classList.add('hidden');
+}
+
+function showToast(msg) {
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333; color:white; padding:12px 24px; border-radius:24px; font-size:14px; z-index:200; animation: fadeIn 0.3s;';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+// Init
+renderAppList();
+renderSettingsApps();
+</script>
+</body>
+</html>
