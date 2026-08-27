@@ -37,14 +37,23 @@ export async function validateAndInsert(apiKeyHash: string, payload: NotifyPaylo
     return { error: 'Failed to insert notification' as const }
   }
 
-  return { userId, notificationId: inserted.id }
+  return { userId, apiKeyId: apiKey.id, notificationId: inserted.id }
 }
+
+const RETRY_DELAYS_MS = [0, 2000, 5000]
 
 /**
  * Forward webhook sau khi response đã gửi (gọi trong after()).
  * Không block endpoint - điện thoại không phải chờ forward.
+ * Thử lại (retry) 3 lần với backoff (0s, 2s, 5s); nếu vẫn fail,
+ * enqueue vào notify_queue để cron xử lý lại (retry bền vững).
  */
-export async function forwardWebhook(userId: string, notificationId: number, payload: NotifyPayload) {
+export async function forwardWebhook(
+  userId: string,
+  apiKeyId: string,
+  notificationId: number,
+  payload: NotifyPayload,
+) {
   const supabase = createServiceRoleClient()
 
   const { data: config } = await supabase
@@ -53,12 +62,19 @@ export async function forwardWebhook(userId: string, notificationId: number, pay
     .eq('user_id', userId)
     .single()
 
+  if (!config?.is_enabled || !config.target_url) {
+    return { userId, forwarded: false, skipped: true }
+  }
+
   let forwarded = false
   let forwardStatusCode: number | null = null
   let forwardBytes: number | null = null
   let forwardError: string | null = null
 
-  if (config?.is_enabled && config.target_url) {
+  for (const delayMs of RETRY_DELAYS_MS) {
+    if (delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
     try {
       const resp = await fetch(config.target_url, {
         method: 'POST',
@@ -70,20 +86,35 @@ export async function forwardWebhook(userId: string, notificationId: number, pay
       forwardStatusCode = resp.status
       const body = await resp.text()
       forwardBytes = new TextEncoder().encode(body).length
+      if (forwarded) break
+      forwardError = `HTTP ${resp.status}`
     } catch (err) {
       forwardError = err instanceof Error ? err.message : 'Forward failed'
       forwardStatusCode = 0
     }
+  }
 
-    await supabase
-      .from('notifications')
-      .update({
-        forwarded,
-        forward_status_code: forwardStatusCode,
-        forward_bytes: forwardBytes,
-        forward_error: forwardError,
-      })
-      .eq('id', notificationId)
+  await supabase
+    .from('notifications')
+    .update({
+      forwarded,
+      forward_status_code: forwardStatusCode,
+      forward_bytes: forwardBytes,
+      forward_error: forwarded ? null : forwardError,
+    })
+    .eq('id', notificationId)
+
+  // Nếu vẫn fail sau retry nhanh → enqueue vào notify_queue để cron retry bền vững
+  if (!forwarded) {
+    const { error: queueError } = await supabase.from('notify_queue').insert({
+      api_key_id: apiKeyId,
+      raw_payload: payload,
+      status: 'pending',
+      retry_count: 0,
+    })
+    if (queueError) {
+      // không đáng chặn; chỉ ghi lỗi
+    }
   }
 
   return { userId, forwarded }

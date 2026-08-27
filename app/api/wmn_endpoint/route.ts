@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   // Forward webhook sau khi response đã gửi - KHÔNG block endpoint,
   // điện thoại không phải chờ webhook. Vercel dùng waitUntil giữ invocation.
   after(async () => {
-    await forwardWebhook(result.userId, result.notificationId, payload)
+    await forwardWebhook(result.userId, result.apiKeyId, result.notificationId, payload)
   })
 
   return NextResponse.json({ status: 'accepted' }, { status: 202 })
