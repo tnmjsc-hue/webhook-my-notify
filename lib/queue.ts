@@ -1,5 +1,4 @@
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { createClient } from '@/lib/supabase/server'
 import type { NotifyPayload } from '@/lib/types'
 
 export async function createQueueItem(apiKeyHash: string, payload: NotifyPayload) {
@@ -17,7 +16,6 @@ export async function createQueueItem(apiKeyHash: string, payload: NotifyPayload
 
   const { error: insertError } = await supabase.from('notify_queue').insert({
     api_key_id: apiKey.id,
-    user_id: apiKey.user_id,
     raw_payload: payload,
     status: 'pending',
   })
@@ -32,7 +30,7 @@ export async function createQueueItem(apiKeyHash: string, payload: NotifyPayload
 const MAX_RETRIES = 3
 
 export async function processPendingItems() {
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
 
   const { data: items, error } = await supabase
     .from('notify_queue')
@@ -54,8 +52,16 @@ export async function processPendingItems() {
 
     const payload = item.raw_payload as NotifyPayload
 
+    // resolve user_id from api_keys (notify_queue has no user_id column)
+    const { data: apiKey } = await supabase
+      .from('api_keys')
+      .select('user_id')
+      .eq('id', item.api_key_id)
+      .single()
+    const userId = apiKey?.user_id
+
     const { error: notifError } = await supabase.from('notifications').insert({
-      user_id: item.user_id,
+      user_id: userId,
       application: payload.application,
       event_time: payload.time,
       money: payload.money,
@@ -76,7 +82,7 @@ export async function processPendingItems() {
     const { data: config } = await supabase
       .from('webhook_configs')
       .select('target_url, is_enabled')
-      .eq('user_id', item.user_id)
+      .eq('user_id', userId)
       .single()
 
     let forwarded = false
@@ -109,12 +115,12 @@ export async function processPendingItems() {
           forward_bytes: forwardBytes,
           forward_error: forwardError,
         })
-        .eq('user_id', item.user_id)
+        .eq('user_id', userId)
         .eq('detail', payload.detail)
         .eq('created_at', (await supabase
           .from('notifications')
           .select('created_at')
-          .eq('user_id', item.user_id)
+          .eq('user_id', userId)
           .order('created_at', { ascending: false })
           .limit(1)
           .single()
