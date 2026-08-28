@@ -38,9 +38,9 @@ export const PLANS: Record<PlanName, PlanLimits> = {
   },
   premium: {
     label: 'Premium',
-    pricePerMonth: 99000,
-    priceLabel: '99.000đ',
-    maxApiKeys: 10,
+    pricePerMonth: 50000,
+    priceLabel: '50.000đ',
+    maxApiKeys: 3,
     maxNotificationsPerMonth: 10000,
     maxNotificationsPerDay: 3000,
     maxWebhookForwardsPerDay: 3000,
@@ -48,7 +48,7 @@ export const PLANS: Record<PlanName, PlanLimits> = {
     tagline: 'Dành cho cửa hàng / team nhỏ',
     popular: true,
     features: [
-      '10 API keys',
+      '3 API keys',
       '10.000 thông báo / tháng',
       '3.000 thông báo / ngày',
       '3.000 webhook forward / ngày',
