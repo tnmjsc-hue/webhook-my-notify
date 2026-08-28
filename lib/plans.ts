@@ -1,4 +1,7 @@
 export type PlanName = 'free' | 'premium' | 'unlimited'
+export type BillingCycle = 'monthly' | 'yearly'
+
+export const YEARLY_DISCOUNT_PERCENT = 20
 
 export interface PlanLimits {
   label: string
@@ -74,6 +77,21 @@ export const PLANS: Record<PlanName, PlanLimits> = {
 }
 
 export const PLAN_NAMES: PlanName[] = ['free', 'premium', 'unlimited']
+
+export function getPlanPrice(plan: PlanName, billingCycle: BillingCycle): number {
+  const monthlyPrice = PLANS[plan].pricePerMonth
+  if (billingCycle === 'monthly') return monthlyPrice
+
+  return Math.round(monthlyPrice * 12 * (100 - YEARLY_DISCOUNT_PERCENT) / 100)
+}
+
+export function formatPlanPrice(price: number): string {
+  return `${price.toLocaleString('vi-VN')}đ`
+}
+
+export function getMonthlyEquivalent(plan: PlanName): string {
+  return formatPlanPrice(Math.round(getPlanPrice(plan, 'yearly') / 12))
+}
 
 export function getPlanName(plan: string | null | undefined): PlanName {
   return plan === 'premium' || plan === 'unlimited' ? plan : 'free'

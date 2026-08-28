@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { PLAN_NAMES, type PlanName } from '@/lib/plans'
-import { PlanCard } from '@/components/PlanCard'
+import { type BillingCycle, type PlanName } from '@/lib/plans'
+import { PricingPlans } from '@/components/PricingPlans'
 
 export default function UpgradePage() {
   const [currentPlan, setCurrentPlan] = useState<PlanName>('free')
+  const [currentBillingCycle, setCurrentBillingCycle] = useState<BillingCycle>('monthly')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<PlanName | null>(null)
   const [message, setMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
@@ -19,27 +20,30 @@ export default function UpgradePage() {
       if (!user) return
       const { data: profile } = await supabase
         .from('profiles')
-        .select('plan')
+        .select('plan, billing_cycle')
         .eq('id', user.id)
         .single()
       if (profile?.plan) setCurrentPlan(profile.plan as PlanName)
+      if (profile?.billing_cycle === 'monthly' || profile?.billing_cycle === 'yearly') {
+        setCurrentBillingCycle(profile.billing_cycle)
+      }
       setLoading(false)
     })()
   }, [supabase])
 
-  async function upgrade(name: PlanName) {
+  async function upgrade(name: PlanName, billingCycle: BillingCycle) {
     setBusy(name)
     setMessage(null)
     const r = await fetch('/api/upgrade', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan: name }),
+      body: JSON.stringify({ plan: name, billingCycle }),
     })
     const body = await r.json()
     setBusy(null)
     if (r.ok) {
       setCurrentPlan(name)
-      setMessage({ type: 'ok', text: `Bạn đã chuyển sang gói ${name}.` })
+      setMessage({ type: 'ok', text: `Bạn đã chuyển sang gói ${name} theo chu kỳ ${billingCycle === 'yearly' ? 'năm' : 'tháng'}.` })
     } else {
       setMessage({ type: 'err', text: body.error ?? 'Nâng cấp thất bại' })
     }
@@ -62,28 +66,13 @@ export default function UpgradePage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {PLAN_NAMES.map((name) => (
-          <PlanCard
-            key={name}
-            name={name}
-            current={currentPlan}
-            cta={
-              <button
-                onClick={() => upgrade(name)}
-                disabled={busy !== null || currentPlan === name}
-                className={`w-full text-center py-2.5 rounded-xl text-sm font-medium transition-opacity ${
-                  name === 'premium'
-                    ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90'
-                    : 'border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                {busy === name ? 'Đang xử lý...' : currentPlan === name ? 'Gói hiện tại' : name === 'free' ? 'Chuyển về Free' : 'Nâng cấp'}
-              </button>
-            }
-          />
-        ))}
-      </div>
+      <PricingPlans
+        key={currentBillingCycle}
+        current={currentPlan}
+        defaultBillingCycle={currentBillingCycle}
+        onUpgrade={upgrade}
+        busy={busy}
+      />
 
       <div className="bg-zinc-100 dark:bg-zinc-800/50 rounded-xl p-4 text-sm text-zinc-600 dark:text-zinc-400 space-y-2">
         <p className="font-medium text-zinc-900 dark:text-white">Lưu ý</p>

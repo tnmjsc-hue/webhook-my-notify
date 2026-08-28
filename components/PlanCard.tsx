@@ -1,16 +1,26 @@
-import { PLANS, type PlanName } from '@/lib/plans'
+import {
+  getMonthlyEquivalent,
+  getPlanPrice,
+  formatPlanPrice,
+  PLANS,
+  type BillingCycle,
+  type PlanName,
+} from '@/lib/plans'
 
 export function PlanCard({
   name,
   current,
+  billingCycle = 'monthly',
   cta,
 }: {
   name: PlanName
   current?: PlanName
+  billingCycle?: BillingCycle
   cta?: React.ReactNode
 }) {
   const plan = PLANS[name]
   const isCurrent = current === name
+  const isYearly = billingCycle === 'yearly'
 
   return (
     <div
@@ -34,9 +44,12 @@ export function PlanCard({
       <h4 className="text-lg font-bold text-zinc-900 dark:text-white">{plan.label}</h4>
       <p className="text-sm text-zinc-500 mt-1">{plan.tagline}</p>
       <p className="mt-4 text-4xl font-bold text-zinc-900 dark:text-white">
-        {plan.priceLabel}
-        <span className="text-sm font-normal text-zinc-500">/tháng</span>
+        {isYearly ? formatPlanPrice(getPlanPrice(name, billingCycle)) : plan.priceLabel}
+        <span className="text-sm font-normal text-zinc-500">/{isYearly ? 'năm' : 'tháng'}</span>
       </p>
+      {isYearly && name !== 'free' && (
+        <p className="mt-1 text-xs text-zinc-500">Tương đương {getMonthlyEquivalent(name)}/tháng</p>
+      )}
 
       <ul className="mt-6 space-y-2.5 flex-1">
         {plan.features.map((f) => (

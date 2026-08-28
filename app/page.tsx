@@ -1,6 +1,5 @@
 import Link from 'next/link'
-import { PLANS, PLAN_NAMES, type PlanName } from '@/lib/plans'
-import { PlanCard } from '@/components/PlanCard'
+import { PricingPlans } from '@/components/PricingPlans'
 
 export default function Home() {
   return (
@@ -130,10 +129,8 @@ Body:
           <p className="text-center text-zinc-500 mt-3 max-w-xl mx-auto">
             Chọn gói phù hợp với nhu cầu của bạn. Nâng cấp bất cứ lúc nào.
           </p>
-          <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {PLAN_NAMES.map((name) => (
-              <PlanCard key={name} name={name as PlanName} />
-            ))}
+          <div className="mt-8 max-w-5xl mx-auto space-y-8">
+            <PricingPlans />
           </div>
           <p className="text-center text-sm text-zinc-500 mt-8">
             Cần gói riêng theo quy mô?{' '}
